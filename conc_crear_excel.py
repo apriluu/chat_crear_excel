@@ -61,9 +61,21 @@ def afegir_json_a_excel():
         return
 
     try:
-        # Carregar el fitxer Excel existent
+        # Llegeix les columnes existents del full d'Excel
+        full_df = pd.read_excel(excel_path, sheet_name=full, nrows=1)
+        cols_excel = list(full_df.columns)
+
+        # Afegir columnes buides si no hi són al DataFrame
+        for col in cols_excel:
+            if col not in df.columns:
+                df[col] = ""
+
+        # Reordenar les columnes segons l'ordre del full d'Excel
+        df = df[cols_excel]
+
+        # Escriure les dades a l'Excel a partir de la següent fila disponible
         with pd.ExcelWriter(excel_path, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
-            startrow = book[full].max_row  # accedir directament al full
+            startrow = book[full].max_row
             df.to_excel(writer, sheet_name=full, index=False, header=False, startrow=startrow)
 
         messagebox.showinfo("Fet!", "Les dades s'han afegit correctament a l'Excel.")
