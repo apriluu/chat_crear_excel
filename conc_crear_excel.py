@@ -5,7 +5,6 @@ import json
 from openpyxl import load_workbook
 
 def afegir_json_a_excel():
-    # 1. Agafar el text del JSON
     text = text_area.get("1.0", tk.END).strip()
     if not text:
         messagebox.showwarning("Atenció", "El camp de text està buit.")
@@ -14,22 +13,50 @@ def afegir_json_a_excel():
     try:
         data = json.loads(text)
 
-        # Transformem les llistes de dicts o strings en textos llegibles
-        def llista_dicts_a_text(llista):
-            return "\n".join([f"{d['titol']} ({d['experiencia']}): {d['funcions']}" for d in llista])
-
         def llista_a_text(llista):
-            return "\n".join(llista)
+            return "\n".join(llista) if isinstance(llista, list) else str(llista)
+
+        def perfils_tecnics_a_text(perfils):
+            if isinstance(perfils, dict):
+                perfils = [perfils]
+            if not perfils or not isinstance(perfils, list):
+                return ""
+
+            resultat = []
+            for perfil in perfils:
+                if not isinstance(perfil, dict):
+                    continue
+                titol = perfil.get("titol", "")
+                experiencia = perfil.get("experiencia", "")
+                funcions = perfil.get("funcions", "")
+                resultat.append(f"Títol: {titol}\nExperiència: {experiencia}\nFuncions: {funcions}")
+            return "\n\n".join(resultat)
+
+        equivalencies = {
+            "requisits_legals_tecnics": ["requisits_legals_tecnics_destacats", "requisits_legals_tecnics"],
+            "documentacio_aportar": ["documentacio_aportar", "documents_a_presentar"],
+            "perfils_tecnics_requerits": ["perfils_tecnics_requerits", "equips_tecnics"],
+            "pressupost_licitacio": ["pressupost_licitacio", "PEM", "pressupost_licitacio_PEM"]
+        }
+
+        # Funció que busca el primer nom vàlid dins de les equivalències
+        def get_valor_equivalent(data, claus):
+            for clau in claus:
+                if clau in data:
+                    return data[clau]
+            return None
 
         dades_planes = {
             "Nom del projecte": data.get("nom_projecte"),
             "Ubicació": data.get("ubicacio_projecte"),
-            "Pressupost": data.get("pressupost_licitacio_PEM"),
+            "Pressupost": get_valor_equivalent(data, equivalencies["pressupost_licitacio"]),
             "Data licitació": data.get("data_licitacio"),
-            "Perfils tècnics": llista_dicts_a_text(data.get("perfils_tecnics_requerits", [])),
+            "Perfils tècnics": perfils_tecnics_a_text(
+                get_valor_equivalent(data, equivalencies["perfils_tecnics_requerits"])),
             "Termini execució": data.get("termini_execucio"),
-            "Requisits legals/tècnics": llista_a_text(data.get("requisits_legals_tecnics", [])),
-            "Documentació a aportar": llista_a_text(data.get("documentacio_aportar", []))
+            "Requisits legals/tècnics": llista_a_text(
+                get_valor_equivalent(data, equivalencies["requisits_legals_tecnics"])),
+            "Documentació a aportar": llista_a_text(get_valor_equivalent(data, equivalencies["documentacio_aportar"]))
         }
 
         df = pd.DataFrame([dades_planes])
@@ -38,7 +65,6 @@ def afegir_json_a_excel():
         messagebox.showerror("Error JSON", f"No s'ha pogut llegir el JSON:\n{e}")
         return
 
-    # 2. Seleccionar fitxer Excel
     excel_path = filedialog.askopenfilename(
         title="Selecciona l'Excel on afegir les dades",
         filetypes=[("Fitxers Excel", "*.xlsx")]
@@ -46,7 +72,6 @@ def afegir_json_a_excel():
     if not excel_path:
         return
 
-    # 3. Obrir l’Excel i demanar el nom de la pestanya (full)
     try:
         book = load_workbook(excel_path)
         fulls = book.sheetnames
@@ -54,7 +79,7 @@ def afegir_json_a_excel():
         messagebox.showerror("Error Excel", f"No s'ha pogut obrir l'Excel:\n{e}")
         return
 
-    # Demanar a l'usuari el full (pestanya)
+    # Demanar la pestanya
     full = simpledialog.askstring("Nom de la pestanya", f"Tria una pestanya d'aquest Excel:\n{', '.join(fulls)}")
     if full not in fulls:
         messagebox.showerror("Error", f"La pestanya '{full}' no existeix a l'Excel.")
@@ -84,7 +109,7 @@ label.pack()
 text_area = scrolledtext.ScrolledText(frame, width=80, height=20)
 text_area.pack()
 
-btn_afegir = tk.Button(frame, text="📤 Afegir al Excel", command=afegir_json_a_excel)
+btn_afegir = tk.Button(frame, text="Afegir al Excel", command=afegir_json_a_excel)
 btn_afegir.pack(pady=10)
 
 root.mainloop()
