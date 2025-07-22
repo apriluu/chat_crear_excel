@@ -79,14 +79,12 @@ def afegir_json_a_excel():
         messagebox.showerror("Error Excel", f"No s'ha pogut obrir l'Excel:\n{e}")
         return
 
-    # Demanar la pestanya
     full = simpledialog.askstring("Nom de la pestanya", f"Tria una pestanya d'aquest Excel:\n{', '.join(fulls)}")
     if full not in fulls:
         messagebox.showerror("Error", f"La pestanya '{full}' no existeix a l'Excel.")
         return
 
     try:
-        # Carregar el fitxer Excel existent
         with pd.ExcelWriter(excel_path, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
             startrow = book[full].max_row  # accedir directament al full
             df.to_excel(writer, sheet_name=full, index=False, header=False, startrow=startrow)
