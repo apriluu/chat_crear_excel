@@ -14,7 +14,14 @@ def afegir_json_a_excel():
         data = json.loads(text)
 
         def llista_a_text(llista):
-            return "\n".join(llista) if isinstance(llista, list) else str(llista)
+            if isinstance(llista, list):
+                return "\n".join(map(str, llista))
+            elif isinstance(llista, str):
+                return llista.strip()
+            elif llista is None:
+                return ""
+            else:
+                return str(llista)
 
         def perfils_tecnics_a_text(perfils):
             if isinstance(perfils, dict):
@@ -26,20 +33,25 @@ def afegir_json_a_excel():
             for perfil in perfils:
                 if not isinstance(perfil, dict):
                     continue
-                titol = perfil.get("titol", "")
+                titol = perfil.get("titulacio", "")
                 experiencia = perfil.get("experiencia", "")
                 funcions = perfil.get("funcions", "")
                 resultat.append(f"Títol: {titol}\nExperiència: {experiencia}\nFuncions: {funcions}")
             return "\n\n".join(resultat)
 
         equivalencies = {
-            "requisits_legals_tecnics": ["requisits_legals_tecnics_destacats", "requisits_legals_tecnics"],
-            "documentacio_aportar": ["documentacio_aportar", "documents_a_presentar"],
+            "nom_projecte": ["nom_projecte", "nom_del_projecte"],
+            "ubicacio_projecte": ["ubicacio_projecte", "ubicacio_del_projecte"],
+            "pressupost_licitacio": ["pressupost_licitacio", "PEM", "pressupost_licitacio_PEM",
+                                     "pressupost_de_licitacio_PEM"],
+            "data_licitacio": ["data_licitacio", "data_de_licitacio"],
             "perfils_tecnics_requerits": ["perfils_tecnics_requerits", "equips_tecnics"],
-            "pressupost_licitacio": ["pressupost_licitacio", "PEM", "pressupost_licitacio_PEM"]
+            "termini_execucio": ["termini_execucio", "termini_d_execucio"],
+            "requisits_legals_tecnics": ["requisits_legals_tecnics_destacats", "requisits_legals_o_tecnics_destacats"],
+            "documentacio": ["documentacio_a_aportar", "documentacio_a_portar", "documentacio_aportar",
+                             "documents_a_presentar"]
         }
 
-        # Funció que busca el primer nom vàlid dins de les equivalències
         def get_valor_equivalent(data, claus):
             for clau in claus:
                 if clau in data:
@@ -47,17 +59,28 @@ def afegir_json_a_excel():
             return None
 
         dades_planes = {
-            "Nom del projecte": data.get("nom_projecte"),
-            "Ubicació": data.get("ubicacio_projecte"),
+            "Nom del projecte": get_valor_equivalent(data, equivalencies["nom_projecte"]),
+            "Ubicació": get_valor_equivalent(data, equivalencies["ubicacio_projecte"]),
             "Pressupost": get_valor_equivalent(data, equivalencies["pressupost_licitacio"]),
-            "Data licitació": data.get("data_licitacio"),
+            "Data licitació": get_valor_equivalent(data, equivalencies["data_licitacio"]),
             "Perfils tècnics": perfils_tecnics_a_text(
                 get_valor_equivalent(data, equivalencies["perfils_tecnics_requerits"])),
-            "Termini execució": data.get("termini_execucio"),
+            "Termini execució": get_valor_equivalent(data, equivalencies["termini_execucio"]),
+
             "Requisits legals/tècnics": llista_a_text(
                 get_valor_equivalent(data, equivalencies["requisits_legals_tecnics"])),
-            "Documentació a aportar": llista_a_text(get_valor_equivalent(data, equivalencies["documentacio_aportar"]))
+            "Documentacio": llista_a_text(
+                get_valor_equivalent(data, equivalencies["documentacio"])),
         }
+
+
+        claus_existents = set(k for v in equivalencies.values() for k in v)
+        for clau_json in data.keys():
+            if clau_json not in claus_existents:
+                valor = data[clau_json]
+                if isinstance(valor, (list, dict)):
+                    valor = json.dumps(valor, ensure_ascii=False)
+                dades_planes[clau_json] = valor
 
         df = pd.DataFrame([dades_planes])
 
@@ -89,7 +112,7 @@ def afegir_json_a_excel():
             startrow = book[full].max_row  # accedir directament al full
             df.to_excel(writer, sheet_name=full, index=False, header=False, startrow=startrow)
 
-        messagebox.showinfo("Fet!", "Les dades s'han afegit correctament a l'Excel.")
+        messagebox.showinfo("Fet", "Les dades s'han afegit correctament a l'Excel.")
         text_area.delete("1.0", tk.END)
     except Exception as e:
         messagebox.showerror("Error", f"No s'han pogut afegir les dades:\n{e}")
